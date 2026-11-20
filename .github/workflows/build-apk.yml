@@ -13,8 +13,17 @@ jobs:
 
       - name: Extract project
         run: |
-          if [ -f "VeloGuard-APK-Project.zip" ]; then
-            unzip -o VeloGuard-APK-Project.zip
+          set -e
+          ZIP_FILE=$(ls -t VeloGuard-APK-Project*.zip 2>/dev/null | head -n 1 || true)
+          if [ -n "$ZIP_FILE" ]; then
+            echo "Extracting $ZIP_FILE"
+            unzip -o "$ZIP_FILE" -x ".github/*"
+          fi
+          if [ -f "app/src/main/java/com/tunweb/wireguard/OpenVpnBackend.kt" ]; then
+            sed -i 's/logItem\.mMessage/logItem.toString()/g' app/src/main/java/com/tunweb/wireguard/OpenVpnBackend.kt
+          fi
+          if [ -f "app/build.gradle.kts" ]; then
+            sed -i 's/compileSdk = 34/compileSdk = 35/g' app/build.gradle.kts
           fi
 
       - name: Download hev-socks5-tunnel AAR, ics-openvpn AAR & Aether + Psiphon Android Cores
@@ -29,7 +38,9 @@ jobs:
           grep -q "classes.jar" <<<"$hev_list"
 
           # 1b. ics-openvpn 0.7.55-myst AAR (OpenVPN engine + OpenSSL + native libs)
-          curl -fSL "https://raw.githubusercontent.com/mysteriumnetwork/openvpn_dart/master/android/localmaven/network/mysterium/openvpn/icsopenvpn/0.7.55-myst/icsopenvpn-0.7.55-myst.aar" -o app/libs/icsopenvpn.aar
+          curl -fSL "https://github.com/mysteriumnetwork/openvpn_dart/raw/refs/heads/master/android/localmaven/network/mysterium/openvpn/icsopenvpn/0.7.55-myst/icsopenvpn-0.7.55-myst.aar" -o app/libs/icsopenvpn.aar \
+            || curl -fSL "https://raw.githubusercontent.com/mysteriumnetwork/openvpn_dart/master/android/localmaven/network/mysterium/openvpn/icsopenvpn/0.7.55-myst/icsopenvpn-0.7.55-myst.aar" -o app/libs/icsopenvpn.aar
+          ls -lh app/libs/icsopenvpn.aar
           echo "3540c8579b0056baac517cb6c930d9d9fb19cbbdf6216e4353fce5513aee50f6  app/libs/icsopenvpn.aar" | sha256sum -c -
           ovpn_list=$(unzip -l app/libs/icsopenvpn.aar)
           grep -q "classes.jar" <<<"$ovpn_list"
@@ -96,7 +107,7 @@ jobs:
           RELEASE_STORE_PASSWORD: novaguard123
           RELEASE_KEY_ALIAS: novaguard
           RELEASE_KEY_PASSWORD: novaguard123
-        run: gradle assembleRelease assembleDebug
+        run: gradle assembleRelease assembleDebug --no-daemon --stacktrace
 
       - name: Upload APK Artifacts
         uses: actions/upload-artifact@v4
