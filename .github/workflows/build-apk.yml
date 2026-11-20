@@ -17,7 +17,7 @@ jobs:
             unzip -o VeloGuard-APK-Project.zip
           fi
 
-      - name: Download hev-socks5-tunnel AAR & Aether + Psiphon Android Cores
+      - name: Download hev-socks5-tunnel AAR, ics-openvpn AAR & Aether + Psiphon Android Cores
         run: |
           set -e
           mkdir -p app/libs app/src/main/jniLibs/arm64-v8a app/src/main/jniLibs/armeabi-v7a app/src/main/jniLibs/x86_64 tmp_cores
@@ -25,7 +25,14 @@ jobs:
           # 1. hev-socks5-tunnel v2.20.0 AAR (all ABIs + classes.jar)
           curl -fSL "https://github.com/heiher/hev-socks5-tunnel/releases/download/2.20.0/hev-socks5-tunnel.aar" -o app/libs/hev-socks5-tunnel.aar
           echo "ae8a2e96b80b4eccccd037805a4bb4a278090c89dbcae8bc6fcb7634e9a255b9  app/libs/hev-socks5-tunnel.aar" | sha256sum -c -
-          unzip -l app/libs/hev-socks5-tunnel.aar | grep -q "classes.jar"
+          hev_list=$(unzip -l app/libs/hev-socks5-tunnel.aar)
+          grep -q "classes.jar" <<<"$hev_list"
+
+          # 1b. ics-openvpn 0.7.55-myst AAR (OpenVPN engine + OpenSSL + native libs)
+          curl -fSL "https://raw.githubusercontent.com/mysteriumnetwork/openvpn_dart/master/android/localmaven/network/mysterium/openvpn/icsopenvpn/0.7.55-myst/icsopenvpn-0.7.55-myst.aar" -o app/libs/icsopenvpn.aar
+          echo "3540c8579b0056baac517cb6c930d9d9fb19cbbdf6216e4353fce5513aee50f6  app/libs/icsopenvpn.aar" | sha256sum -c -
+          ovpn_list=$(unzip -l app/libs/icsopenvpn.aar)
+          grep -q "classes.jar" <<<"$ovpn_list"
 
           # 2. CluvexStudio/Aether v2.4.0 Android binaries (Aether + Psiphon core)
           curl -fSL "https://github.com/CluvexStudio/Aether/releases/download/v2.4.0/aether-android-arm64.tar.gz" -o tmp_cores/arm64.tar.gz
