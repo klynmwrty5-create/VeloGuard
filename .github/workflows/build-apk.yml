@@ -29,31 +29,24 @@ jobs:
       - name: Download hev-socks5-tunnel AAR, ics-openvpn AAR & Aether + Psiphon Android Cores
         run: |
           set -e
-          mkdir -p app/libs app/src/main/jniLibs/arm64-v8a app/src/main/jniLibs/armeabi-v7a app/src/main/jniLibs/x86_64 tmp_cores
+          mkdir -p app/libs app/src/main/jniLibs/arm64-v8a app/src/main/jniLibs/armeabi-v7a tmp_cores
 
-          # 1. hev-socks5-tunnel v2.20.0 AAR (all ABIs + classes.jar)
           curl -fSL "https://github.com/heiher/hev-socks5-tunnel/releases/download/2.20.0/hev-socks5-tunnel.aar" -o app/libs/hev-socks5-tunnel.aar
           echo "ae8a2e96b80b4eccccd037805a4bb4a278090c89dbcae8bc6fcb7634e9a255b9  app/libs/hev-socks5-tunnel.aar" | sha256sum -c -
           hev_list=$(unzip -l app/libs/hev-socks5-tunnel.aar)
           grep -q "classes.jar" <<<"$hev_list"
 
-          # 1b. ics-openvpn 0.7.55-myst AAR (OpenVPN engine + OpenSSL + native libs)
           curl -fSL "https://github.com/mysteriumnetwork/openvpn_dart/raw/refs/heads/master/android/localmaven/network/mysterium/openvpn/icsopenvpn/0.7.55-myst/icsopenvpn-0.7.55-myst.aar" -o app/libs/icsopenvpn.aar \
             || curl -fSL "https://raw.githubusercontent.com/mysteriumnetwork/openvpn_dart/master/android/localmaven/network/mysterium/openvpn/icsopenvpn/0.7.55-myst/icsopenvpn-0.7.55-myst.aar" -o app/libs/icsopenvpn.aar
-          ls -lh app/libs/icsopenvpn.aar
           echo "3540c8579b0056baac517cb6c930d9d9fb19cbbdf6216e4353fce5513aee50f6  app/libs/icsopenvpn.aar" | sha256sum -c -
           ovpn_list=$(unzip -l app/libs/icsopenvpn.aar)
           grep -q "classes.jar" <<<"$ovpn_list"
 
-          # 2. CluvexStudio/Aether v2.4.0 Android binaries (Aether + Psiphon core)
           curl -fSL "https://github.com/CluvexStudio/Aether/releases/download/v2.4.0/aether-android-arm64.tar.gz" -o tmp_cores/arm64.tar.gz
           echo "02f1a1d673cf2f3e5592c90ce7ef4d6f03e218d41a333bdd175e0da92ce2073c  tmp_cores/arm64.tar.gz" | sha256sum -c -
 
           curl -fSL "https://github.com/CluvexStudio/Aether/releases/download/v2.4.0/aether-android-armv7.tar.gz" -o tmp_cores/armv7.tar.gz
           echo "13a170d175eab5a64d69c6fa3c174430754f01171d616a00eba0b3598315da1d  tmp_cores/armv7.tar.gz" | sha256sum -c -
-
-          curl -fSL "https://github.com/CluvexStudio/Aether/releases/download/v2.4.0/aether-android-x86_64.tar.gz" -o tmp_cores/x86_64.tar.gz
-          echo "b8d18baf6b1efe120d04109f819d08ca822c1fafeb3d61297b0e035cf095ae07  tmp_cores/x86_64.tar.gz" | sha256sum -c -
 
           extract_aether() {
             archive="$1"
@@ -75,12 +68,10 @@ jobs:
             fi
             cp "$psi_path" "app/src/main/jniLibs/$abi/libpsiphon.so"
             chmod 0755 "app/src/main/jniLibs/$abi/libpsiphon.so"
-            ls -lh "app/src/main/jniLibs/$abi/libaether.so" "app/src/main/jniLibs/$abi/libpsiphon.so"
           }
 
           extract_aether tmp_cores/arm64.tar.gz arm64-v8a
           extract_aether tmp_cores/armv7.tar.gz armeabi-v7a
-          extract_aether tmp_cores/x86_64.tar.gz x86_64
           rm -rf tmp_cores
 
       - name: Set up JDK 17
@@ -101,18 +92,18 @@ jobs:
         with:
           gradle-version: '8.7'
 
-      - name: Build Optimized Release & Debug APKs
+      - name: Build Universal Release APK
         env:
           RELEASE_STORE_FILE: ${{ github.workspace }}/release.jks
           RELEASE_STORE_PASSWORD: novaguard123
           RELEASE_KEY_ALIAS: novaguard
           RELEASE_KEY_PASSWORD: novaguard123
-        run: gradle assembleRelease assembleDebug --no-daemon --stacktrace
+        run: |
+          gradle assembleRelease --no-daemon --stacktrace
+          ls -lh app/build/outputs/apk/release/*.apk
 
-      - name: Upload APK Artifacts
+      - name: Upload Universal APK
         uses: actions/upload-artifact@v4
         with:
-          name: VeloGuard-APK
-          path: |
-            app/build/outputs/apk/release/*.apk
-            app/build/outputs/apk/debug/*.apk
+          name: VeloGuard-Universal-APK
+          path: app/build/outputs/apk/release/app-release.apk
